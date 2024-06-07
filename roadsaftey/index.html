@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Road Safety Tool</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"/>
+    <style>
+        #map { 
+            height: 400px; 
+            width: 100%; 
+        }
+        .weather-info { 
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(134, 136, 25, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .warning-message {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: red;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: none;
+            animation: blink-animation 1s infinite alternate; 
+        }
+        @keyframes blink-animation {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .accident-marker {
+            background-color: red;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+        }
+        .current-location-marker {
+            background-color: rgb(0, 0, 154);
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div> 
+    <div class="weather-info" id="weather-info"></div> 
+    <div class="warning-message" id="warning-message">Caution: You are near an accident-prone zone! Drive carefully!!!</div> <!-- Warning message -->
+    <audio id="alertSound" src="C:\Users\aghil\Downloads\siren-alert-96052.mp3"></audio> 
+    
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+    <script>
+        var firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+
+        function playAlertSound() {
+            var audio = document.getElementById('alertSound');
+            audio.play();
+        }
+
+        function checkAccidentZone(userLat, userLng, accidentData) {
+            var warningMessageElement = document.getElementById('warning-message');
+            var minDistance = 50;
+
+            for (var i = 0; i < accidentData.length; i++) {
+                var accident = accidentData[i];
+                var distance = calculateDistance(userLat, userLng, accident.lat, accident.lng);
+                if (distance < minDistance) {
+                    warningMessageElement.style.display = 'block';
+                    playAlertSound(); 
+                    return;
+                }
+            }
+
+            warningMessageElement.style.display = 'none';
+        }
+
+        function addMarkers(userLat, userLng, accidentData) {
+            var userLocation = L.marker([userLat, userLng], {
+                icon: L.divIcon({className: 'custom-div-icon', html: '<div class="current-location-marker"></div>'})
+            }).addTo(map);
+            userLocation.bindPopup("Your Current Location").openPopup();
+
+            for (var i = 0; i < accidentData.length; i++) {
+                var accident = accidentData[i];
+                var marker = L.marker([accident.lat, accident.lng], {
+                    icon: L.divIcon({className: 'custom-div-icon', html: '<div class="accident-marker"></div>'})
+                }).addTo(map);
+                var popupContent = `
+                    <b>Accident Information:</b><br>
+                    <b>Date:</b> ${accident.date}<br>
+                    <b>Cause:</b> ${accident.cause}<br>
+                    <b>Casualties:</b> ${accident.casualties}<br>
+                    <b>Details:</b> ${accident.description}
+                `;
+                marker.bindPopup(popupContent);
+            }
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            var R = 6371; 
+            var dLat = deg2rad(lat2 - lat1);
+            var dLon = deg2rad(lon2 - lon1);
+            var a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            var d = R * c; 
+            return d * 1000; 
+        }
+
+        function deg2rad(deg) {
+            return deg * (Math.PI / 180);
+        }
+
+        function fetchWeatherInfo(userLat, userLng) {
+            var apiKey = '1b73b95eab0c4c3eff9dd5b0b9a459e7';
+            var apiUrl = 'https://api.openweathermap.org/data/2.5/weather?lat=' + userLat + '&lon=' + userLng + '&units=metric&appid=' + apiKey;
+
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    var weatherInfoElement = document.getElementById('weather-info');
+                    var temperature = data.main.temp;
+                    var weatherCondition = data.weather[0].main;
+                    var isSafeToTravel = checkSafetyForTravel(temperature, weatherCondition);
+                    if (isSafeToTravel) {
+                        weatherInfoElement.innerHTML = `<b>Weather Information:</b><br>
+                                                        Temperature: ${temperature}°C<br>
+                                                        Weather: ${weatherCondition}<br>
+                                                        It is safe to travel in this weather condition.`;
+                    } else {
+                        weatherInfoElement.innerHTML = `<b>Weather Information:</b><br>
+                                                        Temperature: ${temperature}°C<br>
+                                                        Weather: ${weatherCondition}<br>
+                                                        It is not safe to travel in this weather condition. Please be cautious.`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching weather data:', error);
+                    var weatherInfoElement = document.getElementById('weather-info');
+                    weatherInfoElement.innerHTML = 'Failed to fetch weather information';
+                });
+        }
+
+        function checkSafetyForTravel(temperature, weatherCondition) {
+            if (temperature < 35 && weatherCondition !== 'Thunderstorm' && weatherCondition !== 'Snow') {
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        var map = L.map('map').setView([11.1085, 77.3411], 12); 
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors' // Attribution for map data
+        }).addTo(map);
+
+        if ("geolocation" in navigator) {
+            navigator.geolocation.watchPosition(position => {
+                var userLat = position.coords.latitude;
+                var userLng = position.coords.longitude;
+
+                var accidentData = [
+                    { lat: 11.1085, lng: 77.3411, description: "Two-wheeler accident near Railway Station", date: "2024-03-01", cause: "Overspeeding", casualties: 1 },
+                    { lat: 11.1072, lng: 77.3345, description: "Car collision at Avinashi Road", date: "2024-03-01", cause: "Negligence", casualties: 2 },
+                    { lat: 11.5185, lng: 77.2383, description: "Truck collision on NH 948", date: "2024-03-01", cause: "Overspeeding", casualties: 3 },
+                    { lat: 11.5067, lng: 77.2372, description: "Motorcycle  accident at Bannari", date: "2024-03-02", cause: "Negligence", casualties: 1 },
+                    { lat: 11.5099, lng: 77.2506, description: "Car crash  near Sathyamangalam Bus Stand", date: "2024-03-03", cause: "Drunk driving", casualties: 2 },
+                    { lat: 11.5062, lng: 77.2437, description: "Bus collision on Bannari Road", date: "2024-03-04", cause: "Overspeeding", casualties: 4 },
+                    { lat: 11.5123, lng: 77.2478, description: "Bike crash near Vellode", date: "2024-03-05", cause: "Negligence", casualties: 1 },
+                    { lat: 11.5198, lng: 77.2422, description: "Tractor  accident on NH 948", date: "2024-03-06", cause: "Drunk driving", casualties: 3 },
+                    { lat: 11.5156, lng: 77.2356, description: "Car hit a  pole near Sathyamangalam Market", date: "2024-03-07", cause: "Distracted driving", casualties: 2 },
+                    { lat: 11.5234, lng: 77.2445, description: "Pedestrian  knocked down on Bhavani Road", date: "2024-03-08", cause: "Overspeeding", casualties: 1 },
+                    { lat: 10.822910, lng: 77.019096, description: "Truck  collision near Talavadi", date: "2024-03-09", cause: "Negligence", casualties: 3 },
+                   { lat: 12.840995, lng: 77.5117, description: "Accident-prone zone near Rochester", date: "2024-03-11", cause: "Drinking and overspeeding ", casualties: 4 },
+                   { lat: userLat + 0.01, lng: userLng + 0.01, description: "Accident zone 1" },
+                { lat: userLat - 0.005, lng: userLng - 0.005, description: "Accident zone 2" },
+                { lat: userLat + 0.003, lng: userLng - 0.002, description: "Accident zone 3" }
+           
+                  
+                ];
+
+                addMarkers(userLat, userLng, accidentData);
+                checkAccidentZone(userLat, userLng, accidentData);
+                fetchWeatherInfo(userLat, userLng);
+            }, error => {
+                console.error('Error getting user location:', error);
+            });
+        } else {
+            console.log('Geolocation is not supported by your browser');
+        }
+    </script>
+</body>
+</html>

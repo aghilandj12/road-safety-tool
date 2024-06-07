@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Information</title>
+    <style>     
+    body {
+        font-family: Arial, sans-serif;
+        background-image: url('weatherbg.avif');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        margin: 0;
+        padding: 0;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-top: 50px;
+        }
+        .weather-info {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f4f4f4;
+            border-radius: 5px;
+        }
+        .weather-info p {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Weather Information</h1>
+        <div class="weather-info" id="weather-info">
+        </div>
+    </div>
+
+    <script>
+        navigator.geolocation.getCurrentPosition(function(position) {
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+
+            var apiKey = '1b73b95eab0c4c3eff9dd5b0b9a459e7';
+            var apiUrl = 'https://api.openweathermap.org/data/2.5/weather?lat=' + latitude + '&lon=' + longitude + '&units=metric&appid=' + apiKey;
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    var weatherInfoElement = document.getElementById('weather-info');
+                    var temperature = data.main.temp;
+                    var weatherCondition = data.weather[0].main;
+                    var windSpeed = data.wind.speed;
+                    var humidity = data.main.humidity;
+                    var visibility = data.visibility / 1000; 
+                    var sunrise = new Date(data.sys.sunrise * 1000).toLocaleTimeString();
+                    var sunset = new Date(data.sys.sunset * 1000).toLocaleTimeString();
+
+                    weatherInfoElement.innerHTML = `
+                        <p><strong>Location:</strong> ${data.name}, ${data.sys.country}</p>
+                        <p><strong>Temperature:</strong> ${temperature}°C</p>
+                        <p><strong>Weather Condition:</strong> ${weatherCondition}</p>
+                        <p><strong>Wind Speed:</strong> ${windSpeed} m/s</p>
+                        <p><strong>Humidity:</strong> ${humidity}%</p>
+                        <p><strong>Visibility:</strong> ${visibility} km</p>
+                        <p><strong>Sunrise:</strong> ${sunrise}</p>
+                        <p><strong>Sunset:</strong> ${sunset}</p>
+                    `;
+                })
+                .catch(error => {
+                    console.error('Error fetching weather data:', error);
+                    var weatherInfoElement = document.getElementById('weather-info');
+                    weatherInfoElement.innerHTML = 'Failed to fetch weather information';
+                });
+        }, function(error) {
+            console.error('Error getting user location:', error);
+        });
+    </script>
+</body>
+</html>

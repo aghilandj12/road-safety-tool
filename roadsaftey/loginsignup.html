@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login and Signup Form</title>
+    <style>
+        
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            max-width: 300px;
+            padding: 20px;
+            border: 1px solid #c1c1c1;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: rgba(255, 255, 255, 0.9); /* Semi-transparent background for readability */
+        }
+        .container h2 {
+            text-align: center;
+        }
+        .container input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+        .container button {
+            width: 100%;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .container button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="loginContainer">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <input type="email" id="loginEmail" placeholder="Email" required><br>
+            <input type="password" id="loginPassword" placeholder="Password" required><br>
+            <button type="button" onclick="login()">Login</button>
+        </form>
+        <p>Don't have an account? <a href="#" onclick="showSignup()">Sign up</a></p>
+    </div>
+
+    <div class="container" id="signupContainer" style="display: none;">
+        <h2>Sign Up</h2>
+        <form id="signupForm">
+            <input type="text" id="signupFullName" placeholder="Full Name" required><br>
+            <input type="email" id="signupEmail" placeholder="Email" required><br>
+            <input type="password" id="signupPassword" placeholder="Password" required><br>
+            <button type="button" onclick="signup()">Sign Up</button>
+        </form>
+        <p>Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDavkmPCf0XIZf-9kNA8oU9ytshXIa3ZMg",
+            authDomain: "newprjt-87f36.firebaseapp.com",
+            projectId: "newprjt-87f36",
+            storageBucket: "newprjt-87f36.appspot.com",
+            messagingSenderId: "493524440804",
+            appId: "1:493524440804:web:3aa51ac9757d5a93ae3ef1",
+            measurementId: "G-NJTPM2LK0R"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+
+        window.showSignup = function() {
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('signupContainer').style.display = 'block';
+        };
+
+        window.showLogin = function() {
+            document.getElementById('loginContainer').style.display = 'block';
+            document.getElementById('signupContainer').style.display = 'none';
+        };
+
+        window.login = function() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            signInWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    alert('Login successful! Welcome, ' + user.email);
+                    window.location.href = 'home.html'; 
+                })
+                .catch((error) => {
+                    alert('Login failed! ' + error.message);
+                });
+        };
+
+        window.signup = function() {
+            const fullName = document.getElementById('signupFullName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+
+            createUserWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    const user = userCredential.user;
+                    alert('Signup successful! You can now login.');
+                    showLogin();
+                })
+                .catch((error) => {
+                    alert('Signup failed! ' + error.message);
+                });
+        };
+    </script>
+</body>
+</html>
